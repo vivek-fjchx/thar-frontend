@@ -85,7 +85,7 @@ export default function VehicleClassifier() {
 
     try {
       // Example in fetch
-      const res= await fetch(`${process.env.NEXT_PUBLIC_API_URL}/predict`, {
+      const res= await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/predict`, {
         method: "POST",
         body: formData,
       });
