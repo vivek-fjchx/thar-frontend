@@ -645,11 +645,3 @@ const styles: Record<string, CSSProperties> = {
   },
 };
 
-// Add keyframe animation for spinner
-const styleSheet = document.createElement("style");
-styleSheet.textContent = `
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-`;
-document.head.appendChild(styleSheet);
