@@ -1,0 +1,194 @@
+/* styles.module.css - paste into same folder as page.tsx */
+
+.container {
+  padding: 20px;
+  max-width: 500px;
+  margin: 0 auto;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.title {
+  font-size: 24px;
+  margin: 0 0 8px 0;
+}
+
+.button {
+  width: 100%;
+  padding: 14px;
+  margin-top: 12px;
+  background: #0070f3;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 120ms ease, transform 120ms ease;
+}
+
+.button:hover:not(:disabled) {
+  background: #0051cc;
+  transform: translateY(-1px);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.button:disabled {
+  background: #9bbcf5;
+  cursor: not-allowed;
+  opacity: 0.95;
+}
+
+/* keyboard focus for accessibility */
+.button:focus {
+  outline: 3px solid rgba(0, 112, 243, 0.18);
+  outline-offset: 2px;
+}
+
+/* upload label wrapper */
+.uploadLabel {
+  display: block;
+  width: 100%;
+}
+
+/* hide native input */
+.fileInput {
+  display: none;
+}
+
+/* camera container and webcam */
+.cameraContainer {
+  margin-top: 20px;
+}
+
+.webcam {
+  width: 100%;
+  max-width: 350px;
+  border-radius: 10px;
+  display: block;
+  margin: 0 auto;
+}
+
+/* image preview card */
+.imagePreview {
+  width: 100%;
+  height: 300px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  margin-top: 20px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #fafafa;
+}
+
+/* actual preview image */
+.previewImage {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* small note text */
+.noImageText {
+  font-size: 14px;
+  color: #555;
+}
+
+/* prediction card */
+.predictionCard {
+  margin-top: 25px;
+  padding: 15px;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  background: #f8f8f8;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  text-align: left;
+}
+
+.predictionCard h3 {
+  margin-top: 0;
+}
+
+/* grad-cam card */
+.gradcamContainer {
+  margin-top: 25px;
+  padding: 15px;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  background: #fff7ea;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  text-align: center;
+}
+
+.gradcamContainer h3 {
+  margin-top: 0;
+}
+
+/* gradcam image */
+.gradcamImage {
+  width: 100%;
+  max-width: 400px;
+  border-radius: 10px;
+  margin-top: 10px;
+  display: block;
+}
+
+/* Responsive tweaks */
+@media (max-width: 900px) {
+  .container {
+    max-width: 420px;
+    padding: 18px;
+  }
+  .gradcamImage {
+    max-width: 360px;
+  }
+}
+
+@media (max-width: 600px) {
+  .container {
+    max-width: 100%;
+    padding: 14px;
+  }
+
+  .title {
+    font-size: 20px;
+  }
+
+  .imagePreview {
+    height: 220px; /* smaller preview on phones */
+  }
+
+  .webcam {
+    max-width: 100%;
+  }
+
+  .button {
+    padding: 12px;
+    font-size: 15px;
+    border-radius: 8px;
+  }
+
+  
+
+  .gradcamBox {
+  margin-top: 12px;
+  text-align: center;
+}
+
+.gradcamImage {
+  width: 100%;
+  max-width: 320px;
+  border-radius: 8px;
+  margin-top: 8px;
+  border: 2px solid #ddd;
+}
+
+}
