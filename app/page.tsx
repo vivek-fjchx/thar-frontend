@@ -226,7 +226,7 @@ export default function VehicleClassifier() {
             <div style={styles.classificationBox}>
               <div style={styles.classLabel}>Detected Vehicle</div>
               <div style={styles.className}>
-                {result.class === "thar" ? "Mahindra Thar Roxx" : "Jeep Wrangler"}
+                {result.class }
               </div>
             </div>
 
