@@ -85,16 +85,21 @@ export default function VehicleClassifier() {
 
     try {
       // Example in fetch
-      const res= await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/predict`, {
-        method: "POST",
-        body: formData,
-      });
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/predict`, {
+          method: "POST",
+          body: formData,
+        });
+        
+        // NEW critical check
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        
+        const data = await res.json();
+        console.log("DATA FROM BACKEND:", data);
+        
+        setResult(data);
 
-
-      const data = await res.json();
-      console.log("DATA FROM BACKEND:", data);
-
-      setResult(data);
       if (data.gradcam && data.gradcam.length > 10) {
   setGradcamImage(`data:image/png;base64,${data.gradcam}`);
 } else {
