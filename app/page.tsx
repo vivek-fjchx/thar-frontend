@@ -253,6 +253,58 @@ setResult(data);
             </div>
           </div>
 
+          {/* Generate GradCAM Button */}
+          <button
+          onClick={handleGradcam}
+          disabled={loading || !image}
+          style={{
+          ...styles.predictButton,
+          background: "linear-gradient(135deg, #fbd786 0%, #f7797d 100%)",
+          ...(loading || !image ? styles.predictButtonDisabled : {}),
+          marginTop: "12px",
+          position: "relative",
+          overflow: "hidden",
+          transition: "all 0.3s ease",
+          boxShadow: "0 6px 20px rgba(247, 121, 125, 0.35)",
+          }}
+          onMouseEnter={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.04)";
+          }}
+          onMouseLeave={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
+          }}
+          >
+          <span
+          style={{
+            fontWeight: 700,
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            fontSize: "16px",
+          }}
+          >
+          🔥 Generate Grad-CAM
+          </span>
+          
+          {/* pulse animation behind */}
+          <span
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            background:
+              "radial-gradient(circle at center, rgba(255,255,255,0.25), transparent 60%)",
+            opacity: 0,
+            animation: image ? "gradcamPulse 2s infinite" : "none",
+            pointerEvents: "none",
+          }}
+          />
+          </button>
+
+
+          
           {/* Grad-CAM Visualization */}
           {gradcamImage && (
             <div style={styles.gradcamCard}>
