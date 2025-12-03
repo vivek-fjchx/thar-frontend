@@ -114,51 +114,25 @@ setResult(data);
     setLoading(false);
   };
 
-          const handleGradcam = async () => {
-            if (!image) {
-              alert("Please select or capture an image first");
-              return;
-            }
-          
-            setLoading(true);
-          
-            // Convert base64 → Blob again
-            const byteString = atob(image.split(",")[1]);
-            const mimeString = image.split(",")[0].split(":")[1].split(";")[0];
-            const ab = new ArrayBuffer(byteString.length);
-            const ia = new Uint8Array(ab);
-          
-            for (let i = 0; i < byteString.length; i++) {
-              ia[i] = byteString.charCodeAt(i);
-            }
-          
-            const blob = new Blob([ab], { type: mimeString });
-            const formData = new FormData();
-            formData.append("image", blob, "image.jpg");
-          
-            try {
-              const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/gradcam`, {
-                method: "POST",
-                body: formData,
-              });
-          
-              if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          
-              const data = await res.json();
-          
-              if (data.gradcam) {
-                setGradcamImage(`data:image/png;base64,${data.gradcam}`);
-              } else {
-                alert("GradCAM not available");
-              }
-          
-            } catch (err) {
-              console.error(err);
-              alert("GradCAM generation failed.");
-            }
-          
-            setLoading(false);
-          };
+
+  
+
+        const handleGradcam = async () => {
+        if (!image) return alert("Please Upload or Capture image first");
+      
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/cam`, {
+          method: "POST",
+          body: formData,  // same FormData you use in prediction
+        });
+      
+        const data = await res.json();
+        if (data.gradcam) {
+          setGradcamImage(`data:image/png;base64,${data.gradcam}`);
+        } else {
+          alert("Heatmap failed");
+        }
+      };
+
           
 
   
