@@ -280,7 +280,7 @@ setResult(data);
             <div style={styles.classificationBox}>
               <div style={styles.classLabel}>Detected Vehicle</div>
               <div style={styles.className}>
-                {result.class }
+                 {result.class === "thar" ? "Mahindra Thar Roxx " : "Jeep Wrangler"}
               </div>
             </div>
 
