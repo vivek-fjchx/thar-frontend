@@ -119,20 +119,47 @@ setResult(data);
   
 
         const handleGradcam = async () => {
-        if (!image) return alert("Please Upload or Capture image first");
-      
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/cam`, {
-          method: "POST",
-          body: formData,  // same FormData you use in prediction
-        });
-      
-        const data = await res.json();
-        if (data.gradcam) {
-          setGradcamImage(`data:image/png;base64,${data.gradcam}`);
-        } else {
-          alert("Heatmap failed");
-        }
-      };
+  if (!image) {
+    alert("Upload an image first");
+    return;
+  }
+
+  const byteString = atob(image.split(",")[1]);
+  const mimeString = image.split(",")[0].split(":")[1].split(";")[0];
+  const ab = new ArrayBuffer(byteString.length);
+  const ia = new Uint8Array(ab);
+
+  for (let i = 0; i < byteString.length; i++) {
+    ia[i] = byteString.charCodeAt(i);
+  }
+
+  const blob = new Blob([ab], { type: mimeString });
+
+  // ✅ FIX: define formData here
+  const formData = new FormData();
+  formData.append("image", blob, "image.jpg");
+
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/cam`, {
+      method: "POST",
+      body: formData,
+    });
+
+    const data = await res.json();
+    console.log("CAM DATA:", data);
+
+    if (data.gradcam) {
+      setGradcamImage(`data:image/png;base64,${data.gradcam}`);
+    } else {
+      alert("GradCAM generation failed");
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert("Failed to generate CAM");
+  }
+};
+
 
           
 
