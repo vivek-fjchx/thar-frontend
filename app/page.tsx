@@ -108,6 +108,7 @@ setResult(data);
 
     } catch (error) {
       console.error("Error:", error);
+      console.log("yeh hai error : ", error)
       alert("Prediction failed. Check backend connection.");
     }
 
