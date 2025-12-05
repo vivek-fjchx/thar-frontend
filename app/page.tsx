@@ -116,7 +116,7 @@ setResult(data);
 
 
   
-```javascript```
+
 const handleGradcam = async () => {
   if (!image) {
     alert("Please select or capture an image first");
