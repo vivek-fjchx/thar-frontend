@@ -116,25 +116,51 @@ setResult(data);
 
 
   
+```javascript```
+const handleGradcam = async () => {
+  if (!image) {
+    alert("Please select or capture an image first");
+    return;
+  }
+  setLoading(true);
 
-        const handleGradcam = async () => {
-        if (!image) return alert("Please Upload or Capture image first");
+  // Convert base64 + Blob again
+  const bytestring = atob(image.split(",")[1]);
+  const mimestring = image.split(",")[0].split(":")[1].split(";")[0];
+  const ab = new ArrayBuffer(bytestring.length);
+  const ia = new Uint8Array(ab);
+
+  for (let i = 0; i < bytestring.length; i++) {
+    ia[i] = bytestring.charCodeAt(i);
+  }
+  const blob = new Blob([ab], { type: mimestring });
+  const formData = new FormData();
+  formData.append("image", blob, "image.jpg");
+
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/gradcam`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const data = await res.json();
+
+    if (data.gradcam) {
+      setGradcamImage(`data:image/png;base64,${data.gradcam}`);
+    } else {
+      alert("GradCAM not available");
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Please Upgrade to $25 per month pack on render to get Gradcam image.");
+  } finally {
+    setLoading(false);
+  }
+};
+
       
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/gradcam`, {
-          method: "POST",
-          body: formData,  // same FormData you use in prediction
-        });
-      
-        const data = await res.json();
-        if (data.gradcam) {
-          setGradcamImage(`data:image/png;base64,${data.gradcam}`);
-        } else {
-          alert("Please Upgrade to $25 per month pack to get gradcam image");
-        }
-      };
-
-          
-
   
 
   return (
