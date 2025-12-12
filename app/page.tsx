@@ -32,14 +32,20 @@ export default function VehicleClassifier() {
   const touchEndX = useRef<number | null>(null);
 
   useEffect(() => {
-    const styleSheet = document.createElement("style");
-    styleSheet.textContent = `
-      @keyframes spin { to { transform: rotate(360deg); } }
-      @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02);} 100% { transform: scale(1);} }
-    `;
-    document.head.appendChild(styleSheet);
-    return () => document.head.removeChild(styleSheet);
-  }, []);
+  const styleSheet = document.createElement("style");
+  styleSheet.textContent = `
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02);} 100% { transform: scale(1);} }
+  `;
+  document.head.appendChild(styleSheet);
+
+  return () => {
+    if (styleSheet && styleSheet.parentNode) {
+      styleSheet.parentNode.removeChild(styleSheet);
+    }
+  };
+}, []);
+
 
   // file -> base64 helper
   const fileToBase64 = (file: File) =>
