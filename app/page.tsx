@@ -10,7 +10,28 @@ interface BackendResult {
   confidence?: number;
   gradcam?: string | null;
   error?: string;
+
+  // NEW FIELDS
+  probabilities?: {
+    thar: number;
+    wrangler: number;
+  };
+
+  certainty?: "High" | "Medium" | "Low";
+
+  imageStats?: {
+    brightness: string;
+    sharpness: string;
+    contrast: string;
+    visibility: string;
+  };
+
+  system?: {
+    latency_ms: number;
+    modelName: string;
+  };
 }
+
 
 export default function VehicleClassifier() {
   // file & preview states
