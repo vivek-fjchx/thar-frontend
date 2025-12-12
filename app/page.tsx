@@ -419,11 +419,11 @@ export default function VehicleClassifier() {
                           <div style={styles.analyticsTitle}>Probability Breakdown</div>
                           <div style={styles.analyticsRow}>
                             <span>Thar</span>
-                            <span>{(r.probabilities?.thar * 100).toFixed(2)}%</span>
+                            <span>{((r.probabilities?.thar ?? 0) * 100).toFixed(2)}%</span>
                           </div>
                           <div style={styles.analyticsRow}>
                             <span>Wrangler</span>
-                            <span>{(r.probabilities?.wrangler * 100).toFixed(2)}%</span>
+                            <span>{((r.probabilities?.wrangler ?? 0) * 100).toFixed(2)}%</span>
                           </div>
                         </div>
                     
