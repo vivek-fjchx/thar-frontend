@@ -1,167 +1,189 @@
 "use client";
 import { useEffect } from "react";
-
 import { useState, useRef, CSSProperties, ChangeEvent } from "react";
-import { Camera, Upload, Zap, ArrowRight, X, AlertCircle } from "lucide-react";
-import Image from "next/image";
+import { Camera, Upload, Zap, ArrowRight, X, AlertCircle, ArrowLeft, ChevronsLeft, ChevronsRight } from "lucide-react";
+// removed next/image usage because we're showing base64 imgs directly
 
-interface PredictionResult {
-  class: string;
-  confidence: number;
-  gradcam?: string;
+interface BackendResult {
+  filename: string;
+  class?: string;
+  confidence?: number;
+  gradcam?: string | null;
+  error?: string;
 }
 
 export default function VehicleClassifier() {
-  const [showCamera, setShowCamera] = useState<boolean>(false);
-  const [image, setImage] = useState<string | null>(null);
-  const [result, setResult] = useState<PredictionResult | null>(null);
+  // file & preview states
+  const [files, setFiles] = useState<File[]>([]);
+  const [images, setImages] = useState<string[]>([]); // base64 preview strings
+  const [results, setResults] = useState<BackendResult[] | null>(null);
+
+  // UI state
   const [loading, setLoading] = useState<boolean>(false);
-  const [gradcamImage, setGradcamImage] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const [currentIndex, setCurrentIndex] = useState<number>(0);
+
+  // refs
+  const cameraRef = useRef<HTMLInputElement | null>(null);
+  const galleryRef = useRef<HTMLInputElement | null>(null);
+  const sliderRef = useRef<HTMLDivElement | null>(null);
+
+  // touch swipe state
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
 
   useEffect(() => {
-  const styleSheet = document.createElement("style");
-  styleSheet.textContent = `
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-  `;
-  document.head.appendChild(styleSheet);
+    const styleSheet = document.createElement("style");
+    styleSheet.textContent = `
+      @keyframes spin { to { transform: rotate(360deg); } }
+      @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02);} 100% { transform: scale(1);} }
+    `;
+    document.head.appendChild(styleSheet);
+    return () => document.head.removeChild(styleSheet);
+  }, []);
 
-  return () => {
-    document.head.removeChild(styleSheet);
-  };
-}, []);
-  const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
+  // file -> base64 helper
+  const fileToBase64 = (file: File) =>
+    new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result;
-        setImage(typeof result === "string" ? result : null);
-        setResult(null);
-        setGradcamImage(null);
-      };
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = (err) => reject(err);
       reader.readAsDataURL(file);
-    }
-  };
-  const handleCameraCapture = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result;
-        setImage(typeof result === "string" ? result : null);
-        setResult(null);
-        setGradcamImage(null);
-        setShowCamera(false);
-      };
-      reader.readAsDataURL(file);
-    }
+    });
+
+  // handle gallery multiple upload
+  const handleGalleryUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files;
+    if (!selected) return;
+    const arr = Array.from(selected);
+    setFiles(arr);
+
+    const previews = await Promise.all(arr.map((f) => fileToBase64(f)));
+    setImages(previews);
+    setResults(null);
+    setCurrentIndex(0);
   };
 
+  // handle camera single capture (keeps same UX but sets single file)
+  const handleCameraCapture = async (e: ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setFiles([f]);
+    const preview = await fileToBase64(f);
+    setImages([preview]);
+    setResults(null);
+    setCurrentIndex(0);
+  };
+
+  // clear all
+  const clearAll = () => {
+    setFiles([]);
+    setImages([]);
+    setResults(null);
+    setCurrentIndex(0);
+  };
+
+  // predict - send all files as "files" to backend
   const handlePredict = async () => {
-    if (!image) {
-      alert("Please select or capture an image first");
+    if (files.length === 0) {
+      alert("Please select at least one image.");
       return;
     }
 
     setLoading(true);
-    setResult(null);
+    setResults(null);
 
-    const byteString = atob(image.split(",")[1]);
-    const mimeString = image.split(",")[0].split(":")[1].split(";")[0];
-    const ab = new ArrayBuffer(byteString.length);
-    const ia = new Uint8Array(ab);
-
-    for (let i = 0; i < byteString.length; i++) {
-      ia[i] = byteString.charCodeAt(i);
-    }
-
-    const blob = new Blob([ab], { type: mimeString });
     const formData = new FormData();
-    formData.append("image", blob, "image.jpg");
+    files.forEach((f) => formData.append("files", f));
 
     try {
-      // Example in fetch
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/predict`, {
-  method: "POST",
-  body: formData,
-});
+        method: "POST",
+        body: formData,
+      });
 
-// NEW critical check
-if (!res.ok) {
-  throw new Error(`HTTP ${res.status}`);
-}
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-const data = await res.json();
-console.log("DATA FROM BACKEND:", data);
+      const data = await res.json();
+      // expected: { results: [ {filename, class, confidence, gradcam?, error? }, ... ] }
+      if (data && Array.isArray(data.results)) {
+        setResults(data.results);
+      } else {
+        // backend returned unexpected format; try to handle older single-result format
+        if (data?.filename) {
+          setResults([data]);
+        } else {
+          throw new Error("Unexpected backend response");
+        }
+      }
 
-setResult(data);
-
-      if (data.gradcam && data.gradcam.length > 10) {
-  setGradcamImage(`data:image/png;base64,${data.gradcam}`);
-} else {
-  setGradcamImage(null);
-}
-
-    } catch (error) {
-      console.error("Error:", error);
-      alert("Prediction failed. Check backend connection.");
+      // try to show result for currentIndex (if out of range adjust)
+      setCurrentIndex((ci) => Math.min(ci, Math.max(0, (data.results?.length || 1) - 1)));
+    } catch (err) {
+      console.error("Prediction error:", err);
+      alert("Prediction failed. Check backend connection & logs.");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
-
-  
-
-const handleGradcam = async () => {
-  if (!image) {
-    alert("Please select or capture an image first");
-    return;
-  }
-  setLoading(true);
-
-  // Convert base64 + Blob again
-  const bytestring = atob(image.split(",")[1]);
-  const mimestring = image.split(",")[0].split(":")[1].split(";")[0];
-  const ab = new ArrayBuffer(bytestring.length);
-  const ia = new Uint8Array(ab);
-
-  for (let i = 0; i < bytestring.length; i++) {
-    ia[i] = bytestring.charCodeAt(i);
-  }
-  const blob = new Blob([ab], { type: mimestring });
-  const formData = new FormData();
-  formData.append("image", blob, "image.jpg");
-
-  try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/gradcam`, {
-      method: "POST",
-      body: formData,
+  // navigate slides (desktop arrows + programmatic)
+  const goPrev = () => {
+    setCurrentIndex((i) => {
+      if (images.length === 0) return 0;
+      return (i - 1 + images.length) % images.length;
     });
+  };
+  const goNext = () => {
+    setCurrentIndex((i) => {
+      if (images.length === 0) return 0;
+      return (i + 1) % images.length;
+    });
+  };
 
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-    const data = await res.json();
-
-    if (data.gradcam) {
-      setGradcamImage(`data:image/png;base64,${data.gradcam}`);
-    } else {
-      alert("GradCAM not available");
+  // touch handlers for swipe detection (mobile)
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchEndX.current = null;
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.touches[0].clientX;
+  };
+  const onTouchEnd = () => {
+    if (touchStartX.current === null || touchEndX.current === null) return;
+    const dx = touchStartX.current - touchEndX.current;
+    const threshold = 40; // px
+    if (dx > threshold) {
+      // swiped left -> next
+      goNext();
+    } else if (dx < -threshold) {
+      // swiped right -> prev
+      goPrev();
     }
-  } catch (err) {
-    console.error(err);
-    alert("Please Upgrade to $25 per month pack on render to get Gradcam image.");
-  } finally {
-    setLoading(false);
-  }
-};
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
 
-      
-  
+  // keyboard support
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (images.length === 0) return;
+      if (e.key === "ArrowLeft") goPrev();
+      if (e.key === "ArrowRight") goNext();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [images]);
+
+  // helper to find result for current image using filename matching
+  const currentResult = (): BackendResult | null => {
+    if (!results || results.length === 0) return null;
+    const currentFile = files[currentIndex];
+    if (!currentFile) return null;
+    const found = results.find((r) => r.filename === currentFile.name);
+    if (found) return found;
+    // fallback: use index-matching if filenames don't match
+    return results[currentIndex] ?? null;
+  };
 
   return (
     <div style={styles.container}>
@@ -173,9 +195,9 @@ const handleGradcam = async () => {
             <Zap size={24} color="#fff" />
           </div>
           <h1 style={styles.title}>AI Vehicle Classifier</h1>
-          <p style={styles.subtitle}>Thar Roxx vs Jeep Wrangler Detection</p>
+          <p style={styles.subtitle}>Mahindra Thar vs Jeep Wrangler</p>
           <div style={styles.techBadge}>
-            <span style={styles.techText}>ResNet50 • Grad-CAM • PyTorch</span>
+            <span style={styles.techText}>Mobile-friendly • ONNX • FastAPI</span>
           </div>
         </div>
       </div>
@@ -183,239 +205,220 @@ const handleGradcam = async () => {
       {/* Action Buttons */}
       <div style={styles.actionSection}>
         <input
-          ref={fileInputRef}
+          ref={cameraRef}
           type="file"
           accept="image/*"
           capture="environment"
           onChange={handleCameraCapture}
           style={styles.hiddenInput}
         />
-        
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          style={styles.primaryButton}
-        >
-          <Camera size={20} />
+        <button onClick={() => cameraRef.current?.click()} style={styles.primaryButton}>
+          <Camera size={18} />
           <span>Open Camera</span>
-          <ArrowRight size={18} style={styles.buttonArrow} />
+          <ArrowRight size={16} style={styles.buttonArrow} />
         </button>
 
         <input
+          ref={galleryRef}
+          id="gallery-upload"
           type="file"
           accept="image/*"
-          onChange={handleFileUpload}
+          multiple
+          onChange={handleGalleryUpload}
           style={styles.hiddenInput}
-          id="gallery-upload"
         />
-        
-        <button
-          onClick={() => document.getElementById('gallery-upload')?.click()}
-          style={styles.secondaryButton}
-        >
-          <Upload size={20} />
-          <span>Upload from Gallery</span>
+        <button onClick={() => galleryRef.current?.click()} style={styles.secondaryButton}>
+          <Upload size={18} />
+          <span>Upload from Gallery (Multiple)</span>
         </button>
       </div>
 
-      {/* Image Preview */}
-      <div style={styles.previewSection}>
-        <div style={styles.previewLabel}>
-          <span>Image Preview</span>
-          {image && (
-            <button
-              onClick={() => {
-                setImage(null);
-                setResult(null);
-                setGradcamImage(null);
-              }}
-              style={styles.clearButton}
-            >
-              <X size={16} />
-              Clear
-            </button>
-          )}
-        </div>
-        
-        <div style={styles.previewBox}>
-          {image ? (
-            <img src={image} alt="preview" style={styles.previewImage} />
-          ) : (
-            <div style={styles.emptyState}>
-              <Upload size={48} color="#cbd5e1" />
-              <p style={styles.emptyText}>No image selected</p>
-              <p style={styles.emptySubtext}>Capture or upload an image to begin</p>
-            </div>
-          )}
-        </div>
-      </div>
+      {/* Main big card (image viewer + result subsection) */}
+      <div style={styles.mainCardWrapper}>
+        <div style={styles.mainCard}>
+          {/* image viewer area */}
+          <div
+            ref={sliderRef}
+            style={styles.viewer}
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+          >
+            {/* left arrow (desktop) */}
+            {images.length > 1 && (
+              <button
+                onClick={goPrev}
+                aria-label="Previous image"
+                style={{ ...styles.navArrow, left: 12 }}
+                className="desktop-only"
+              >
+                <ArrowLeft size={20} />
+              </button>
+            )}
 
-      {/* Predict Button */}
-      <button
-        onClick={handlePredict}
-        disabled={loading || !image}
-        style={{
-          ...styles.predictButton,
-          ...(loading || !image ? styles.predictButtonDisabled : {}),
-        }}
-      >
-        {loading ? (
-          <>
-            <div style={styles.spinner}></div>
-            <span>Analyzing...</span>
-          </>
-        ) : (
-          <>
-            <Zap size={20} />
-            <span>Run Prediction</span>
-          </>
-        )}
-      </button>
+            {/* image / placeholder */}
+            {images.length === 0 ? (
+              <div style={styles.viewerEmpty}>
+                <Upload size={48} color="#cbd5e1" />
+                <p style={styles.emptyText}>No images selected</p>
+                <p style={styles.emptySubtext}>Use camera or upload from gallery</p>
+              </div>
+            ) : (
+              <div style={styles.imageContainer}>
+                <img
+                  src={images[currentIndex]}
+                  alt={`preview-${currentIndex}`}
+                  style={styles.viewerImage}
+                  draggable={false}
+                />
+                {/* small filename badge */}
+                <div style={styles.filenameBadge}>{files[currentIndex]?.name ?? `Image ${currentIndex + 1}`}</div>
+              </div>
+            )}
 
-      {/* Results Section */}
-      {result && (
-        <div style={styles.resultsSection}>
-          <div style={styles.resultCard}>
-            <h3 style={styles.resultTitle}>Classification Result</h3>
-            
-            <div style={styles.classificationBox}>
-              <div style={styles.classLabel}>Detected Vehicle</div>
-              <div style={styles.className}>
-                 {result.class === "thar" ? "Mahindra Thar Roxx " : "Jeep Wrangler"}
-              </div>
-            </div>
+            {/* right arrow (desktop) */}
+            {images.length > 1 && (
+              <button
+                onClick={goNext}
+                aria-label="Next image"
+                style={{ ...styles.navArrow, right: 12 }}
+                className="desktop-only"
+              >
+                <ChevronsRight size={18} />
+              </button>
+            )}
 
-            <div style={styles.confidenceContainer}>
-              <div style={styles.confidenceLabel}>
-                <span>Confidence Score</span>
-                <span style={styles.confidenceValue}>
-                  {(result.confidence * 100).toFixed(2)}%
-                </span>
+            {/* mobile left/right simple chevrons overlay for hint */}
+            {images.length > 1 && (
+              <div style={styles.mobileArrowsHint}>
+                <div style={styles.hintLeft}>‹</div>
+                <div style={styles.hintRight}>›</div>
               </div>
-              <div style={styles.progressBar}>
-                <div
-                  style={{
-                    ...styles.progressFill,
-                    width: `${result.confidence * 100}%`,
-                  }}
-                ></div>
-              </div>
-            </div>
+            )}
           </div>
 
-          {/* Generate GradCAM Button */}
-          <button
-          onClick={handleGradcam}
-          disabled={loading || !image}
-          style={{
-          ...styles.predictButton,
-          background: "linear-gradient(135deg, #fbd786 0%, #f7797d 100%)",
-          ...(loading || !image ? styles.predictButtonDisabled : {}),
-          marginTop: "12px",
-          position: "relative",
-          overflow: "hidden",
-          transition: "all 0.3s ease",
-          boxShadow: "0 6px 20px rgba(247, 121, 125, 0.35)",
-          }}
-          onMouseEnter={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.04)";
-          }}
-          onMouseLeave={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
-          }}
-          >
-          <span
-          style={{
-            fontWeight: 700,
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            fontSize: "16px",
-          }}
-          >
-          🔥 Generate Grad-CAM
-          </span>
-          
-          {/* pulse animation behind */}
-          <span
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            background:
-              "radial-gradient(circle at center, rgba(255,255,255,0.25), transparent 60%)",
-            opacity: 0,
-            animation: image ? "gradcamPulse 2s infinite" : "none",
-            pointerEvents: "none",
-          }}
-          />
-          </button>
-
-
-          
-          {/* Grad-CAM Visualization */}
-          {gradcamImage && (
-            <div style={styles.gradcamCard}>
-              <h3 style={styles.gradcamTitle}>
-                <span style={styles.gradcamIcon}>🔥</span>
-                Grad-CAM Heatmap
-              </h3>
-              <p style={styles.gradcamDesc}>
-                Visual explanation showing which regions influenced the model's decision
-              </p>
-              <div style={styles.gradcamBox}>
-                <img
-                  src={gradcamImage}
-                  alt="Grad-CAM Heatmap"
-                  style={styles.gradcamImage}
+          {/* pager dots */}
+          {images.length > 1 && (
+            <div style={styles.pager}>
+              {images.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setCurrentIndex(idx)}
+                  style={{
+                    ...styles.pagerDot,
+                    ...(idx === currentIndex ? styles.pagerDotActive : {}),
+                  }}
+                  aria-label={`Go to image ${idx + 1}`}
                 />
-              </div>
-              <div style={styles.heatmapLegend}>
-                <span style={styles.legendItem}>
-                  <span style={{...styles.legendColor, background: '#0000ff'}}></span>
-                  Low
-                </span>
-                <span style={styles.legendItem}>
-                  <span style={{...styles.legendColor, background: '#00ff00'}}></span>
-                  Medium
-                </span>
-                <span style={styles.legendItem}>
-                  <span style={{...styles.legendColor, background: '#ff0000'}}></span>
-                  High
-                </span>
-              </div>
+              ))}
             </div>
           )}
+
+          {/* buttons row inside card */}
+          <div style={styles.cardActions}>
+            <button
+              onClick={handlePredict}
+              disabled={loading || files.length === 0}
+              style={{
+                ...styles.predictButton,
+                ...(loading || files.length === 0 ? styles.predictButtonDisabled : {}),
+                marginRight: 12,
+              }}
+            >
+              {loading ? <div style={styles.spinner}></div> : <Zap size={18} />}
+              <span>{loading ? "Analyzing..." : "Run Prediction"}</span>
+            </button>
+
+            <button onClick={clearAll} style={styles.ghostButton}>
+              <X size={16} />
+              <span>Clear</span>
+            </button>
+          </div>
+
+          {/* Result subsection for currently visible image */}
+          <div style={styles.resultSubsection}>
+            <h3 style={styles.resultTitle}>Result</h3>
+
+            {!results && !loading && files.length === 0 && (
+              <p style={styles.resultPlaceholder}>No image selected — results will appear here.</p>
+            )}
+
+            {!results && loading && (
+              <p style={styles.resultPlaceholder}>Running model — please wait...</p>
+            )}
+
+            {results && (
+              <div style={styles.resultContent}>
+                {(() => {
+                  const r = currentResult();
+                  if (!r) {
+                    return <p style={styles.resultPlaceholder}>No result for this image yet — try running prediction.</p>;
+                  }
+                  if (r.error) {
+                    return <p style={{ color: "#ef4444", fontWeight: 700 }}>{r.error}</p>;
+                  }
+                  return (
+                    <>
+                      <div style={styles.resultRow}>
+                        <div style={styles.resultLabel}>Detected</div>
+                        <div style={styles.resultValue}>
+                          {r.class === "thar" ? "Mahindra Thar" : r.class === "wrangler" ? "Jeep Wrangler" : r.class}
+                        </div>
+                      </div>
+
+                      <div style={styles.resultRow}>
+                        <div style={styles.resultLabel}>Confidence</div>
+                        <div style={styles.resultValue}>
+                          {(typeof r.confidence === "number" ? (r.confidence * 100).toFixed(2) : "—") + "%"}
+                        </div>
+                      </div>
+
+                      {/* progress bar */}
+                      <div style={styles.confidenceContainer}>
+                        <div style={styles.progressBar}>
+                          <div
+                            style={{
+                              ...styles.progressFill,
+                              width: `${Math.min(100, Math.max(0, (r.confidence ?? 0) * 100))}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+          </div>
         </div>
-      )}
+      </div>
 
       {/* Footer */}
       <div style={styles.footer}>
         <div style={styles.footerContent}>
           <AlertCircle size={16} color="#64748b" />
-          <span style={styles.footerText}>
-            Deep Learning Model • Real-time Inference
-          </span>
+          <span style={styles.footerText}>Deep Learning Model • Real-time Inference</span>
         </div>
       </div>
     </div>
   );
 }
 
+/* ---------- Styles (kept vibrant + professional, expanded for card) ---------- */
 const styles: Record<string, CSSProperties> = {
   container: {
     minHeight: "100vh",
-    background: "linear-gradient(to bottom, #f8fafc, #e2e8f0)",
+    background: "linear-gradient(180deg, #f8fafc 0%, #e6eefc 100%)",
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     paddingBottom: "80px",
+    paddingTop: "8px",
   },
   header: {
     position: "relative",
-    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-    padding: "40px 20px 50px",
-    borderRadius: "0 0 30px 30px",
-    boxShadow: "0 10px 40px rgba(102, 126, 234, 0.3)",
+    background: "linear-gradient(135deg, #0ea5e9 0%, #7c3aed 100%)",
+    padding: "36px 20px 46px",
+    borderRadius: "0 0 28px 28px",
+    boxShadow: "0 10px 40px rgba(124, 58, 237, 0.12)",
     overflow: "hidden",
   },
   headerGradient: {
@@ -424,7 +427,7 @@ const styles: Record<string, CSSProperties> = {
     left: 0,
     right: 0,
     bottom: 0,
-    background: "radial-gradient(circle at 30% 50%, rgba(255,255,255,0.1) 0%, transparent 50%)",
+    background: "radial-gradient(circle at 25% 40%, rgba(255,255,255,0.12) 0%, transparent 40%)",
     pointerEvents: "none",
   },
   headerContent: {
@@ -433,320 +436,329 @@ const styles: Record<string, CSSProperties> = {
     color: "white",
   },
   iconBadge: {
-    width: "60px",
-    height: "60px",
-    background: "rgba(255, 255, 255, 0.2)",
-    borderRadius: "20px",
+    width: "64px",
+    height: "64px",
+    background: "rgba(255,255,255,0.18)",
+    borderRadius: "16px",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    margin: "0 auto 16px",
-    backdropFilter: "blur(10px)",
-    border: "2px solid rgba(255, 255, 255, 0.3)",
+    margin: "0 auto 14px",
+    backdropFilter: "blur(8px)",
+    border: "1px solid rgba(255,255,255,0.18)",
   },
   title: {
     margin: "0 0 8px 0",
     fontSize: "28px",
-    fontWeight: "700",
-    letterSpacing: "-0.5px",
+    fontWeight: 800,
+    letterSpacing: "-0.6px",
   },
   subtitle: {
-    margin: "0 0 16px 0",
-    fontSize: "15px",
-    opacity: 0.9,
-    fontWeight: "400",
+    margin: "0 0 10px 0",
+    fontSize: "14px",
+    opacity: 0.95,
+    fontWeight: 500,
   },
   techBadge: {
     display: "inline-block",
-    background: "rgba(255, 255, 255, 0.15)",
-    padding: "6px 16px",
-    borderRadius: "20px",
-    backdropFilter: "blur(10px)",
-    border: "1px solid rgba(255, 255, 255, 0.2)",
+    background: "rgba(255,255,255,0.12)",
+    padding: "6px 14px",
+    borderRadius: "999px",
+    marginTop: 6,
+    border: "1px solid rgba(255,255,255,0.08)",
   },
   techText: {
     fontSize: "12px",
-    fontWeight: "500",
-    letterSpacing: "0.5px",
+    fontWeight: 600,
+    color: "rgba(255,255,255,0.95)",
   },
+
+  /* Action section */
   actionSection: {
-    padding: "24px 20px 0",
+    padding: "18px 20px",
     display: "flex",
-    flexDirection: "column",
     gap: "12px",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  hiddenInput: {
-    display: "none",
-  },
+  hiddenInput: { display: "none" },
   primaryButton: {
     display: "flex",
     alignItems: "center",
-    justifyContent: "center",
-    gap: "12px",
-    padding: "16px",
-    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    gap: "10px",
+    padding: "12px 16px",
+    background: "linear-gradient(90deg, #06b6d4 0%, #7c3aed 100%)",
     color: "white",
     border: "none",
-    borderRadius: "16px",
-    fontSize: "16px",
-    fontWeight: "600",
+    borderRadius: "12px",
+    fontSize: "15px",
+    fontWeight: 700,
     cursor: "pointer",
-    boxShadow: "0 4px 16px rgba(102, 126, 234, 0.3)",
-    transition: "all 0.3s ease",
-    position: "relative",
-    overflow: "hidden",
+    boxShadow: "0 6px 20px rgba(124,58,237,0.15)",
   },
   buttonArrow: {
-    marginLeft: "auto",
-    transition: "transform 0.3s ease",
+    marginLeft: "6px",
+    transition: "transform 0.2s ease",
   },
   secondaryButton: {
     display: "flex",
     alignItems: "center",
+    gap: "10px",
+    padding: "12px 16px",
+    background: "white",
+    color: "#374151",
+    border: "2px solid #e6eefc",
+    borderRadius: "12px",
+    fontSize: "15px",
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+
+  /* main card wrapper */
+  mainCardWrapper: {
+    display: "flex",
     justifyContent: "center",
-    gap: "12px",
-    padding: "16px",
-    background: "white",
-    color: "#667eea",
-    border: "2px solid #e2e8f0",
-    borderRadius: "16px",
-    fontSize: "16px",
-    fontWeight: "600",
-    cursor: "pointer",
-    transition: "all 0.3s ease",
+    padding: "18px 20px 28px",
   },
-  previewSection: {
-    padding: "24px 20px 0",
-  },
-  previewLabel: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: "12px",
-    fontSize: "14px",
-    fontWeight: "600",
-    color: "#475569",
-  },
-  clearButton: {
-    display: "flex",
-    alignItems: "center",
-    gap: "4px",
-    padding: "6px 12px",
-    background: "#fee2e2",
-    color: "#dc2626",
-    border: "none",
-    borderRadius: "8px",
-    fontSize: "13px",
-    fontWeight: "500",
-    cursor: "pointer",
-  },
-  previewBox: {
-    background: "white",
+  mainCard: {
+    width: "100%",
+    maxWidth: "920px",
+    background: "linear-gradient(180deg, #ffffff 0%, #fbfdff 100%)",
     borderRadius: "20px",
+    padding: "18px",
+    boxShadow: "0 10px 40px rgba(2,6,23,0.06)",
+    border: "1px solid rgba(14,165,233,0.06)",
+  },
+
+  /* viewer area */
+  viewer: {
+    position: "relative",
+    borderRadius: "14px",
     overflow: "hidden",
-    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.08)",
-    minHeight: "280px",
+    minHeight: "360px",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    border: "2px solid #f1f5f9",
+    background: "linear-gradient(180deg, #eef2ff 0%, #ffffff 100%)",
+    border: "1px solid #eef2ff",
   },
-  previewImage: {
+  viewerEmpty: {
+    textAlign: "center",
+    padding: "26px",
+    color: "#6b7280",
+  },
+  imageContainer: {
     width: "100%",
     height: "100%",
-    objectFit: "contain",
-    maxHeight: "400px",
-  },
-  emptyState: {
-    textAlign: "center",
-    padding: "40px 20px",
-  },
-  emptyText: {
-    margin: "16px 0 4px 0",
-    fontSize: "16px",
-    fontWeight: "600",
-    color: "#64748b",
-  },
-  emptySubtext: {
-    margin: 0,
-    fontSize: "14px",
-    color: "#94a3b8",
-  },
-  predictButton: {
+    position: "relative",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    gap: "10px",
-    padding: "18px",
-    margin: "24px 20px 0",
-    background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+  },
+  viewerImage: {
+    maxWidth: "100%",
+    maxHeight: "520px",
+    objectFit: "contain",
+    borderRadius: "8px",
+    boxShadow: "0 8px 30px rgba(99,102,241,0.06)",
+    userSelect: "none",
+  },
+  filenameBadge: {
+    position: "absolute",
+    top: 14,
+    left: 14,
+    padding: "8px 12px",
+    background: "rgba(0,0,0,0.6)",
     color: "white",
-    border: "none",
-    borderRadius: "16px",
-    fontSize: "17px",
-    fontWeight: "700",
-    cursor: "pointer",
-    boxShadow: "0 6px 24px rgba(245, 87, 108, 0.4)",
-    transition: "all 0.3s ease",
+    fontSize: "13px",
+    fontWeight: 700,
+    borderRadius: "10px",
+    backdropFilter: "blur(6px)",
   },
-  predictButtonDisabled: {
-    background: "#e2e8f0",
-    color: "#94a3b8",
-    boxShadow: "none",
-    cursor: "not-allowed",
-  },
-  spinner: {
-    width: "20px",
-    height: "20px",
-    border: "3px solid rgba(255, 255, 255, 0.3)",
-    borderTop: "3px solid white",
-    borderRadius: "50%",
-    animation: "spin 1s linear infinite",
-  },
-  resultsSection: {
-    padding: "24px 20px 0",
+
+  /* nav arrows */
+  navArrow: {
+    position: "absolute",
+    top: "50%",
+    transform: "translateY(-50%)",
+    zIndex: 30,
+    width: 44,
+    height: 44,
+    borderRadius: 10,
     display: "flex",
-    flexDirection: "column",
-    gap: "16px",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "rgba(255,255,255,0.9)",
+    border: "1px solid rgba(14,165,233,0.12)",
+    cursor: "pointer",
+    boxShadow: "0 6px 18px rgba(9,12,38,0.06)",
   },
-  resultCard: {
-    background: "white",
-    borderRadius: "20px",
-    padding: "24px",
-    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.08)",
-    border: "2px solid #f1f5f9",
-  },
-  resultTitle: {
-    margin: "0 0 20px 0",
-    fontSize: "18px",
-    fontWeight: "700",
-    color: "#1e293b",
-  },
-  classificationBox: {
-    background: "linear-gradient(135deg, #667eea15 0%, #764ba215 100%)",
-    padding: "16px",
-    borderRadius: "12px",
-    marginBottom: "20px",
-    border: "1px solid #e2e8f0",
-  },
-  classLabel: {
-    fontSize: "12px",
-    fontWeight: "600",
-    color: "#64748b",
-    textTransform: "uppercase",
-    letterSpacing: "0.5px",
-    marginBottom: "6px",
-  },
-  className: {
-    fontSize: "22px",
-    fontWeight: "700",
-    color: "#667eea",
-  },
-  confidenceContainer: {
-    marginTop: "16px",
-  },
-  confidenceLabel: {
+
+  mobileArrowsHint: {
+    position: "absolute",
+    inset: 0,
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: "10px",
-    fontSize: "14px",
-    fontWeight: "600",
+    pointerEvents: "none",
+    opacity: 0.08,
+    fontSize: 80,
+    color: "#0ea5e9",
+    zIndex: 1,
+  },
+
+  /* pager dots */
+  pager: {
+    display: "flex",
+    gap: 8,
+    justifyContent: "center",
+    marginTop: 12,
+  },
+  pagerDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    background: "#e6eefc",
+    border: "1px solid rgba(14,165,233,0.06)",
+    cursor: "pointer",
+  },
+  pagerDotActive: {
+    background: "linear-gradient(90deg, #06b6d4 0%, #7c3aed 100%)",
+    transform: "scale(1.15)",
+  },
+
+  /* actions & result */
+  cardActions: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 14,
+    justifyContent: "flex-start",
+  },
+  predictButton: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "10px",
+    padding: "12px 16px",
+    background: "linear-gradient(90deg, #f97316 0%, #ef4444 100%)",
+    color: "white",
+    border: "none",
+    borderRadius: "10px",
+    fontSize: "15px",
+    fontWeight: 800,
+    cursor: "pointer",
+    boxShadow: "0 8px 24px rgba(239,68,68,0.18)",
+  },
+  predictButtonDisabled: {
+    opacity: 0.6,
+    cursor: "not-allowed",
+    boxShadow: "none",
+  },
+  ghostButton: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "10px 12px",
+    background: "transparent",
+    border: "1px solid #eef2ff",
+    color: "#374151",
+    borderRadius: 10,
+    cursor: "pointer",
+  },
+
+  resultSubsection: {
+    marginTop: 18,
+    padding: 14,
+    borderRadius: 12,
+    background: "linear-gradient(180deg, rgba(14,165,233,0.03) 0%, rgba(124,58,237,0.02) 100%)",
+    border: "1px solid rgba(14,165,233,0.06)",
+  },
+  resultTitle: {
+    margin: 0,
+    fontSize: 16,
+    fontWeight: 800,
+    color: "#0f172a",
+  },
+  resultPlaceholder: {
+    marginTop: 8,
     color: "#475569",
   },
-  confidenceValue: {
-    fontSize: "18px",
-    fontWeight: "700",
-    color: "#10b981",
+  resultContent: {
+    marginTop: 12,
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+  },
+  resultRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  resultLabel: {
+    fontSize: 13,
+    color: "#475569",
+    fontWeight: 700,
+    textTransform: "uppercase",
+  },
+  resultValue: {
+    fontSize: 16,
+    fontWeight: 900,
+    color: "#0ea5e9",
+  },
+
+  confidenceContainer: {
+    marginTop: 4,
   },
   progressBar: {
     width: "100%",
-    height: "10px",
+    height: 10,
     background: "#f1f5f9",
-    borderRadius: "10px",
+    borderRadius: 999,
     overflow: "hidden",
+    border: "1px solid rgba(14,165,233,0.04)",
   },
   progressFill: {
     height: "100%",
     background: "linear-gradient(90deg, #10b981 0%, #059669 100%)",
-    borderRadius: "10px",
-    transition: "width 0.6s ease",
+    borderRadius: 999,
+    transition: "width 0.6s cubic-bezier(0.2,0.9,0.2,1)",
   },
-  gradcamCard: {
-    background: "white",
-    borderRadius: "20px",
-    padding: "24px",
-    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.08)",
-    border: "2px solid #fef3c7",
+
+  spinner: {
+    width: 18,
+    height: 18,
+    border: "3px solid rgba(255,255,255,0.3)",
+    borderTop: "3px solid white",
+    borderRadius: "50%",
+    animation: "spin 1s linear infinite",
   },
-  gradcamTitle: {
-    margin: "0 0 8px 0",
-    fontSize: "18px",
-    fontWeight: "700",
-    color: "#1e293b",
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-  },
-  gradcamIcon: {
-    fontSize: "22px",
-  },
-  gradcamDesc: {
-    margin: "0 0 16px 0",
-    fontSize: "13px",
-    color: "#64748b",
-    lineHeight: "1.5",
-  },
-  gradcamBox: {
-    borderRadius: "16px",
-    overflow: "hidden",
-    border: "3px solid #fef3c7",
-    background: "#fffbeb",
-  },
-  gradcamImage: {
-    width: "100%",
-    display: "block",
-  },
-  heatmapLegend: {
-    display: "flex",
-    justifyContent: "center",
-    gap: "20px",
-    marginTop: "16px",
-    padding: "12px",
-    background: "#fef3c7",
-    borderRadius: "12px",
-  },
-  legendItem: {
-    display: "flex",
-    alignItems: "center",
-    gap: "6px",
-    fontSize: "12px",
-    fontWeight: "600",
-    color: "#475569",
-  },
-  legendColor: {
-    width: "16px",
-    height: "16px",
-    borderRadius: "4px",
-    border: "1px solid rgba(0,0,0,0.1)",
-  },
+
+  /* footer */
   footer: {
     padding: "24px 20px",
-    marginTop: "24px",
+    marginTop: 20,
+    display: "flex",
+    justifyContent: "center",
   },
   footerContent: {
     display: "flex",
     alignItems: "center",
-    justifyContent: "center",
-    gap: "8px",
-    padding: "12px",
+    gap: 10,
+    padding: "12px 16px",
     background: "white",
-    borderRadius: "12px",
-    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.05)",
+    borderRadius: 12,
+    boxShadow: "0 4px 16px rgba(2,6,23,0.04)",
   },
   footerText: {
-    fontSize: "13px",
+    fontSize: 13,
     color: "#64748b",
-    fontWeight: "500",
+    fontWeight: 600,
   },
+
+  /* small responsive helpers */
+  emptyText: { margin: "12px 0 6px", fontSize: 16, fontWeight: 700, color: "#374151" },
+  emptySubtext: { margin: 0, fontSize: 13, color: "#64748b" },
 };
+
+/* ---------- Helper (outside the component) ---------- */
+/* none needed - inline functions used */
