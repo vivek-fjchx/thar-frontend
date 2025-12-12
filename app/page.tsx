@@ -363,35 +363,97 @@ export default function VehicleClassifier() {
                   if (r.error) {
                     return <p style={{ color: "#ef4444", fontWeight: 700 }}>{r.error}</p>;
                   }
-                  return (
-                    <>
-                      <div style={styles.resultRow}>
-                        <div style={styles.resultLabel}>Detected</div>
-                        <div style={styles.resultValue}>
-                          {r.class === "thar" ? "Mahindra Thar" : r.class === "wrangler" ? "Jeep Wrangler" : r.class}
+                    return (
+                      <>
+                        {/* Detected Vehicle */}
+                        <div style={styles.resultRow}>
+                          <div style={styles.resultLabel}>Detected</div>
+                          <div style={styles.resultValue}>
+                            {r.class === "thar" ? "Mahindra Thar" : r.class === "wrangler" ? "Jeep Wrangler" : r.class}
+                          </div>
                         </div>
-                      </div>
+                    
+                        {/* Confidence */}
+                        <div style={styles.resultRow}>
+                          <div style={styles.resultLabel}>Confidence</div>
+                          <div style={styles.resultValue}>
+                            {(typeof r.confidence === "number" ? (r.confidence * 100).toFixed(2) : "—") + "%"}
+                          </div>
+                        </div>
+                    
+                        {/* Confidence Bar */}
+                        <div style={styles.confidenceContainer}>
+                          <div style={styles.progressBar}>
+                            <div
+                              style={{
+                                ...styles.progressFill,
+                                width: `${Math.min(100, Math.max(0, (r.confidence ?? 0) * 100))}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                    
+                        {/* Probability Breakdown */}
+                        <div style={styles.analyticsCard}>
+                          <div style={styles.analyticsTitle}>Probability Breakdown</div>
+                          <div style={styles.analyticsRow}>
+                            <span>Thar</span>
+                            <span>{(r.probabilities?.thar * 100).toFixed(2)}%</span>
+                          </div>
+                          <div style={styles.analyticsRow}>
+                            <span>Wrangler</span>
+                            <span>{(r.probabilities?.wrangler * 100).toFixed(2)}%</span>
+                          </div>
+                        </div>
+                    
+                        {/* Model Certainty */}
+                        <div style={styles.analyticsCardBlue}>
+                          <div style={styles.analyticsTitleBlue}>Model Certainty</div>
+                          <div style={styles.analyticsValueBlue}>{r.certainty}</div>
+                        </div>
+                    
+                        {/* Image Quality */}
+                        <div style={styles.analyticsCard}>
+                          <div style={styles.analyticsTitle}>Image Quality Analysis</div>
+                    
+                          <div style={styles.analyticsRow}>
+                            <span>Brightness</span>
+                            <span>{r.imageStats?.brightness}</span>
+                          </div>
+                          <div style={styles.analyticsRow}>
+                            <span>Sharpness</span>
+                            <span>{r.imageStats?.sharpness}</span>
+                          </div>
+                          <div style={styles.analyticsRow}>
+                            <span>Contrast</span>
+                            <span>{r.imageStats?.contrast}</span>
+                          </div>
+                          <div style={styles.analyticsRow}>
+                            <span>Visibility</span>
+                            <span>{r.imageStats?.visibility}</span>
+                          </div>
+                        </div>
+                    
+                        {/* System Metrics */}
+                        <div style={styles.analyticsCardGray}>
+                          <div style={styles.analyticsTitleGray}>System Metrics</div>
+                    
+                          <div style={styles.analyticsRow}>
+                            <span>Inference Time</span>
+                            <span>{r.system?.latency_ms} ms</span>
+                          </div>
+                          <div style={styles.analyticsRow}>
+                            <span>Model</span>
+                            <span>{r.system?.modelName}</span>
+                          </div>
+                          <div style={styles.analyticsRow}>
+                            <span>Resolution</span>
+                            <span>224 × 224</span>
+                          </div>
+                        </div>
+                      </>
+                    );
 
-                      <div style={styles.resultRow}>
-                        <div style={styles.resultLabel}>Confidence</div>
-                        <div style={styles.resultValue}>
-                          {(typeof r.confidence === "number" ? (r.confidence * 100).toFixed(2) : "—") + "%"}
-                        </div>
-                      </div>
-
-                      {/* progress bar */}
-                      <div style={styles.confidenceContainer}>
-                        <div style={styles.progressBar}>
-                          <div
-                            style={{
-                              ...styles.progressFill,
-                              width: `${Math.min(100, Math.max(0, (r.confidence ?? 0) * 100))}%`,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </>
-                  );
                 })()}
               </div>
             )}
