@@ -819,73 +819,73 @@ const styles: Record<string, CSSProperties> = {
     transition: "width 0.6s cubic-bezier(0.2,0.9,0.2,1)",
   },
 
-  /* Analytics Cards - NEW IMPROVED STYLES */
-  analyticsCard: {
-    background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
-    border: "1px solid #e2e8f0",
-    borderRadius: "14px",
-    padding: "16px",
-    marginTop: "12px",
-    boxShadow: "0 2px 8px rgba(15, 23, 42, 0.04)",
-  },
-  analyticsTitle: {
-    fontSize: "13px",
-    fontWeight: 800,
-    color: "#334155",
-    textTransform: "uppercase",
-    letterSpacing: "0.5px",
-    marginBottom: "14px",
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-  },
-  analyticsRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "10px 0",
-    borderBottom: "1px solid #f1f5f9",
-    fontSize: "14px",
-  },
-  analyticsCardBlue: {
-    background: "linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%)",
-    border: "2px solid #93c5fd",
-    borderRadius: "14px",
-    padding: "18px",
-    marginTop: "12px",
-    textAlign: "center",
-    boxShadow: "0 4px 12px rgba(59, 130, 246, 0.08)",
-  },
-  analyticsTitleBlue: {
-    fontSize: "12px",
-    fontWeight: 700,
-    color: "#1e40af",
-    textTransform: "uppercase",
-    letterSpacing: "0.5px",
-    marginBottom: "8px",
-  },
-  analyticsValueBlue: {
-    fontSize: "28px",
-    fontWeight: 900,
-    color: "#2563eb",
-    letterSpacing: "-0.5px",
-  },
-  analyticsCardGray: {
-    background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
-    border: "1px solid #e2e8f0",
-    borderRadius: "14px",
-    padding: "16px",
-    marginTop: "12px",
-    boxShadow: "0 2px 8px rgba(15, 23, 42, 0.04)",
-  },
-  analyticsTitleGray: {
-    fontSize: "13px",
-    fontWeight: 800,
-    color: "#475569",
-    textTransform: "uppercase",
-    letterSpacing: "0.5px",
-    marginBottom: "14px",
-  },
+/* Analytics Cards - IMPROVED CONTRAST */
+analyticsCard: {
+  background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
+  border: "2px solid #cbd5e1",  // Changed from 1px #e2e8f0
+  borderRadius: "14px",
+  padding: "16px",
+  marginTop: "12px",
+  boxShadow: "0 4px 12px rgba(15, 23, 42, 0.08)",  // Increased shadow
+},
+analyticsTitle: {
+  fontSize: "13px",
+  fontWeight: 800,
+  color: "#1e293b",  // Changed from #334155 (darker)
+  textTransform: "uppercase",
+  letterSpacing: "0.5px",
+  marginBottom: "14px",
+  display: "flex",
+  alignItems: "center",
+  gap: "8px",
+},
+analyticsRow: {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "10px 0",
+  borderBottom: "1px solid #e2e8f0",  // Changed from #f1f5f9
+  fontSize: "14px",
+},
+analyticsCardBlue: {
+  background: "linear-gradient(135deg, #bfdbfe 0%, #c7d2fe 100%)",  // More saturated
+  border: "2px solid #60a5fa",  // Stronger border - changed from #93c5fd
+  borderRadius: "14px",
+  padding: "18px",
+  marginTop: "12px",
+  textAlign: "center",
+  boxShadow: "0 6px 16px rgba(59, 130, 246, 0.15)",  // Increased shadow
+},
+analyticsTitleBlue: {
+  fontSize: "12px",
+  fontWeight: 700,
+  color: "#1e3a8a",  // Changed from #1e40af (darker)
+  textTransform: "uppercase",
+  letterSpacing: "0.5px",
+  marginBottom: "8px",
+},
+analyticsValueBlue: {
+  fontSize: "28px",
+  fontWeight: 900,
+  color: "#1d4ed8",  // Changed from #2563eb (darker)
+  letterSpacing: "-0.5px",
+},
+analyticsCardGray: {
+  background: "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",  // More contrast
+  border: "2px solid #cbd5e1",  // Changed from 1px #e2e8f0
+  borderRadius: "14px",
+  padding: "16px",
+  marginTop: "12px",
+  boxShadow: "0 4px 12px rgba(15, 23, 42, 0.08)",  // Increased shadow
+},
+analyticsTitleGray: {
+  fontSize: "13px",
+  fontWeight: 800,
+  color: "#334155",  // Changed from #475569 (darker)
+  textTransform: "uppercase",
+  letterSpacing: "0.5px",
+  marginBottom: "14px",
+},
 
   spinner: {
     width: 18,
