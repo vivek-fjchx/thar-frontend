@@ -819,71 +819,89 @@ const styles: Record<string, CSSProperties> = {
     transition: "width 0.6s cubic-bezier(0.2,0.9,0.2,1)",
   },
 
-/* Analytics Cards - IMPROVED CONTRAST */
+/* ANALYTICS CARDS – FINAL READABILITY TUNED (MOBILE + DESKTOP) */
+
 analyticsCard: {
   background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
-  border: "2px solid #cbd5e1",  // Changed from 1px #e2e8f0
+  border: "2px solid #cbd5e1",
   borderRadius: "14px",
   padding: "16px",
   marginTop: "12px",
-  boxShadow: "0 4px 12px rgba(15, 23, 42, 0.08)",  // Increased shadow
+  boxShadow: "0 4px 12px rgba(15, 23, 42, 0.08)",
 },
+
 analyticsTitle: {
-  fontSize: "13px",
+  fontSize: "12.5px",
   fontWeight: 800,
-  color: "#1e293b",  // Changed from #334155 (darker)
+  color: "#0f172a",
   textTransform: "uppercase",
-  letterSpacing: "0.5px",
+  letterSpacing: "0.7px",
   marginBottom: "14px",
   display: "flex",
   alignItems: "center",
   gap: "8px",
 },
+
 analyticsRow: {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
   padding: "10px 0",
-  borderBottom: "1px solid #e2e8f0",  // Changed from #f1f5f9
   fontSize: "14px",
+  color: "#334155",
+  borderBottom: "1px solid rgba(203, 213, 225, 0.6)",
 },
+
+analyticsRowValue: {
+  fontWeight: 600,
+  color: "#0f172a",
+},
+
+/* FEATURED BLUE CARD */
+
 analyticsCardBlue: {
-  background: "linear-gradient(135deg, #bfdbfe 0%, #c7d2fe 100%)",  // More saturated
-  border: "2px solid #60a5fa",  // Stronger border - changed from #93c5fd
+  background: "linear-gradient(135deg, #bfdbfe 0%, #c7d2fe 100%)",
+  border: "2px solid #60a5fa",
   borderRadius: "14px",
   padding: "18px",
   marginTop: "12px",
   textAlign: "center",
-  boxShadow: "0 6px 16px rgba(59, 130, 246, 0.15)",  // Increased shadow
+  boxShadow: "0 6px 14px rgba(59, 130, 246, 0.12)",
 },
+
 analyticsTitleBlue: {
   fontSize: "12px",
   fontWeight: 700,
-  color: "#1e3a8a",  // Changed from #1e40af (darker)
+  color: "#1e3a8a",
   textTransform: "uppercase",
-  letterSpacing: "0.5px",
-  marginBottom: "8px",
+  letterSpacing: "0.6px",
+  marginBottom: "6px",
 },
+
 analyticsValueBlue: {
   fontSize: "28px",
   fontWeight: 900,
-  color: "#1d4ed8",  // Changed from #2563eb (darker)
+  color: "#1d4ed8",
   letterSpacing: "-0.5px",
 },
+
+/* SECONDARY GRAY CARD */
+
 analyticsCardGray: {
-  background: "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",  // More contrast
-  border: "2px solid #cbd5e1",  // Changed from 1px #e2e8f0
+  background: "linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%)",
+  border: "2px solid #cbd5e1",
   borderRadius: "14px",
   padding: "16px",
   marginTop: "12px",
-  boxShadow: "0 4px 12px rgba(15, 23, 42, 0.08)",  // Increased shadow
+  boxShadow: "0 4px 12px rgba(15, 23, 42, 0.08)",
 },
+
 analyticsTitleGray: {
-  fontSize: "13px",
+  fontSize: "12.5px",
   fontWeight: 800,
-  color: "#334155",  // Changed from #475569 (darker)
+  color: "#0f172a",
   textTransform: "uppercase",
-  letterSpacing: "0.5px",
+  letterSpacing: "0.7px",
   marginBottom: "14px",
 },
 
